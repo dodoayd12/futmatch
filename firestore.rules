@@ -51,5 +51,19 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
+    // ── REPORTS ─────────────────────────────────────────────────────────────
+    // Kimliği doğrulanmış kullanıcı şikayet oluşturabilir; sadece admin okur
+    match /reports/{docId} {
+      allow create: if request.auth != null &&
+        request.resource.data.reporterId == request.auth.uid;
+      allow read, update, delete: if false; // sadece Firebase Console (admin)
+    }
+
+    // ── BLOCKS ──────────────────────────────────────────────────────────────
+    // Her kullanıcı kendi engel listesini okur/yazar
+    match /blocks/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
   }
 }
