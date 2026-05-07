@@ -232,7 +232,7 @@
             { icon: "📋", title: "Maç Sonucu Nasıl Kaydedilir?", color: "#60a5fa", body: "Maç bittikten sonra sohbet ekranında sonuç kartı otomatik açılır. Rakip kaptanla birlikte aynı sonucu işaretleyin — iki taraf da onaylarsa istatistikler güncellenir." },
             { icon: "⚖️", title: "İki Taraf Anlaşamazsa Ne Olur?", color: "#f97316", body: "Galibiyet/mağlubiyet oylamasında farklı seçim yapılırsa sonuç 'İtirazda' olarak işaretlenir. FutMatch hakemi incelemeye alır, fair-play puanınız etkilenebilir." },
             { icon: "🏆", title: "FutMatch Turnuvası Nedir?", color: "#F5F234", body: "Genel sıralamada ilk 8'e giren takımlar sezon sonu FutMatch Turnuvası'na katılım hakkı kazanır. Eleme usulü format, maç başı ödüller ve şampiyon kupası!" },
-            { icon: "⚡", title: "Puan Nasıl Kazanılır?", color: "#a78bfa", body: "Eşleşme +35 · Süper beğeni +60 · Maç onayı +25 · Galibiyet +100 · Beraberlik +50 (iki takım) · Mağlubiyet +25 · Turnuva galibiyeti +500." },
+            { icon: "⚡", title: "Aktif Puan Sistemimiz", color: "#a78bfa", body: "Eşleşme +35 · Süper beğeni +60 · Maç onayı +25 · Galibiyet +100 · Beraberlik +50 (iki takım) · Mağlubiyet +25 · Turnuva galibiyeti +500." },
         ];
 
         const RANK_ORDER = ["Bronz", "Gümüş", "Altın", "Platin", "Elmas"];
@@ -730,20 +730,39 @@
                         {msgs.map(msg => {
                             const isMe = msg.from === "me";
                             if (msg.type === "result_request") {
+                                const isDisputed = match?.disputed && !match?.adminResolved && !match?.result;
+                                const isAdminResolved = match?.adminResolved;
+                                const resLbl = { win: "Galibiyet 🏆", loss: "Mağlubiyet 😞", draw: "Beraberlik 🤝" };
                                 return (
-                                    <div key={msg.id} style={{ background: dark ? "#0d1a0d" : "#f0fff4", border: "1px solid #4ade8044", borderRadius: 18, padding: "16px", margin: "8px 0" }}>
-                                        <div style={{ color: "#4ade80", fontWeight: 800, fontSize: 14, marginBottom: 6 }}>{"⚽"} Maç Sonucu</div>
-                                        <div style={{ color: th.text3, fontSize: 12, marginBottom: 12 }}>Maç sona erdi. Sonucu kaydedin.</div>
-                                        {msg.myVote ? (
-                                            <div style={{ textAlign: "center" }}>{msg.confirmed ? <div style={{ color: "#4ade80", fontWeight: 700 }}>{"✅"} Sonuç onaylandı!</div> : <div style={{ color: th.text4, fontSize: 12, animation: "pulse 1.5s infinite" }}>Rakip onayı bekleniyor…</div>}</div>
-                                        ) : (
-                                            <div style={{ display: "flex", gap: 8 }}>
-                                                {[["🏆", "Kazandık", "win", "#4ade80"], ["🤝", "Beraberlik", "draw", th.text3], ["😞", "Kaybettik", "loss", "#f87171"]].map(([ic, lb, v, c]) => (
-                                                    <button key={v} onClick={() => voteResult(chatId, msg.id, msg.matchId, v)} style={{ flex: 1, padding: "10px 4px", borderRadius: 12, border: `1px solid ${c}44`, background: `${c}12`, color: c, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
-                                                        <div style={{ fontSize: 20, marginBottom: 4 }}>{ic}</div>{lb}
-                                                    </button>
-                                                ))}
+                                    <div key={msg.id} style={{ background: isDisputed ? (dark ? "#1a0d00" : "#fff8f0") : isAdminResolved ? (dark ? "#0d0d1a" : "#f5f0ff") : (dark ? "#0d1a0d" : "#f0fff4"), border: `1px solid ${isDisputed ? "#f9731644" : isAdminResolved ? "#a78bfa44" : "#4ade8044"}`, borderRadius: 18, padding: "16px", margin: "8px 0" }}>
+                                        <div style={{ color: isDisputed ? "#f97316" : isAdminResolved ? "#a78bfa" : "#4ade80", fontWeight: 800, fontSize: 14, marginBottom: 6 }}>
+                                            {isDisputed ? "⚖️ İtirazlı Maç" : isAdminResolved ? "⚖️ Hakem Kararı" : "⚽ Maç Sonucu"}
+                                        </div>
+                                        {isDisputed && (
+                                            <div style={{ color: th.text3, fontSize: 12, lineHeight: 1.6 }}>
+                                                Taraflar farklı sonuç bildirdi. FutMatch hakemi incelemeye aldı — karar size bildirilecek.
                                             </div>
+                                        )}
+                                        {isAdminResolved && (
+                                            <div style={{ color: "#a78bfa", fontWeight: 700, fontSize: 13 }}>
+                                                {resLbl[match?.result] || "Sonuç belirlendi"} — Hakem kararıyla uygulandı.
+                                            </div>
+                                        )}
+                                        {!isDisputed && !isAdminResolved && (
+                                            msg.myVote ? (
+                                                <div style={{ textAlign: "center" }}>{msg.confirmed ? <div style={{ color: "#4ade80", fontWeight: 700 }}>{"✅"} Sonuç onaylandı!</div> : <div style={{ color: th.text4, fontSize: 12, animation: "pulse 1.5s infinite" }}>Rakip onayı bekleniyor…</div>}</div>
+                                            ) : (
+                                                <div>
+                                                    <div style={{ color: th.text3, fontSize: 12, marginBottom: 10 }}>Maç sona erdi. Sonucu kaydedin.</div>
+                                                    <div style={{ display: "flex", gap: 8 }}>
+                                                        {[["🏆", "Kazandık", "win", "#4ade80"], ["🤝", "Beraberlik", "draw", th.text3], ["😞", "Kaybettik", "loss", "#f87171"]].map(([ic, lb, v, c]) => (
+                                                            <button key={v} onClick={() => voteResult(chatId, msg.id, msg.matchId, v)} style={{ flex: 1, padding: "10px 4px", borderRadius: 12, border: `1px solid ${c}44`, background: `${c}12`, color: c, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+                                                                <div style={{ fontSize: 20, marginBottom: 4 }}>{ic}</div>{lb}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )
                                         )}
                                     </div>
                                 );
@@ -845,6 +864,7 @@
                 return d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
             }
 
+            const [showInfoBox, setShowInfoBox] = React.useState(true);
             return (
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", background: th.bg }}>
                     {/* Header */}
@@ -852,6 +872,18 @@
                         <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: 24, color: th.text, letterSpacing: 2 }}>EŞLEŞMELERİM</div>
                         <div style={{ color: th.text4, fontSize: 12, marginTop: 3 }}>{matches.length} eşleşme · Sohbet etmeye başla</div>
                     </div>
+                    {/* Pinned info box */}
+                    {showInfoBox && (
+                        <div style={{ margin: "10px 12px 0", padding: "12px 14px", borderRadius: 16, background: dark ? "rgba(245,242,52,0.06)" : "rgba(245,242,52,0.12)", border: "1px solid rgba(245,242,52,0.3)", position: "relative", flexShrink: 0 }}>
+                            <button onClick={() => setShowInfoBox(false)} style={{ position: "absolute", top: 8, right: 10, background: "none", border: "none", color: th.text4, fontSize: 16, cursor: "pointer", lineHeight: 1 }}>×</button>
+                            <div style={{ fontWeight: 800, fontSize: 13, color: th.acc, marginBottom: 6 }}>📅 Maç Daveti & Sonuç Sistemi</div>
+                            <div style={{ color: th.text3, fontSize: 12, lineHeight: 1.65 }}>
+                                <b style={{ color: th.text2 }}>Maç Daveti:</b> Sohbet ekranında 📅 ikonuna tıkla, gün ve saat seç, davet gönder. Rakip kabul edince maç onaylanır.<br />
+                                <b style={{ color: th.text2 }}>Sonuç Onaylama:</b> Maç saatinden sonra sonuç kartı açılır. Her iki takım da aynı sonucu seçerse istatistikler otomatik güncellenir.<br />
+                                <b style={{ color: th.text2 }}>İtiraz:</b> Taraflar farklı sonuç seçerse ⚖️ FutMatch hakemi devreye girer ve inceleme sonucu bildirilir.
+                            </div>
+                        </div>
+                    )}
                     {/* Match list */}
                     <div style={{ flex: 1, overflowY: "auto", padding: "8px 12px 20px" }}>
                         {matches.length === 0 && (
@@ -887,8 +919,10 @@
                                                 {m.confirmed ? "Henüz mesaj yok — ilk sen yaz!" : "⏳ Tarih belirlenmedi"}
                                             </div>
                                         )}
-                                        {m.result && <div style={{ color: resColor[m.result], fontSize: 10, marginTop: 2, fontWeight: 700 }}>{resLabel[m.result]}</div>}
-                                        {m.confirmed && m.scheduledTime && !m.result && (
+                                        {m.adminResolved && m.result && <div style={{ color: "#a78bfa", fontSize: 10, marginTop: 2, fontWeight: 700 }}>⚖️ Hakem Kararı · {resLabel[m.result]}</div>}
+                                        {!m.adminResolved && m.result && <div style={{ color: resColor[m.result], fontSize: 10, marginTop: 2, fontWeight: 700 }}>{resLabel[m.result]}</div>}
+                                        {m.disputed && !m.result && <div style={{ color: "#f97316", fontSize: 10, marginTop: 2, fontWeight: 700 }}>⚖️ İtirazlı — İnceleniyor</div>}
+                                        {!m.disputed && m.confirmed && m.scheduledTime && !m.result && (
                                             <div style={{ color: "#4ade80", fontSize: 10, marginTop: 2 }}>🗓 {new Date(m.scheduledTime).toLocaleString("tr-TR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</div>
                                         )}
                                     </div>
@@ -2051,7 +2085,44 @@
                         let result = d.result || null;
                         let resultConfirmed = d.resultConfirmed || false;
                         const pointsAwarded = !!d.pointsAwarded;
-                        if (myVote && opVote && !pointsAwarded) {
+                        const disputed = !!d.disputed;
+                        const adminResolved = !!d.adminResolved;
+                        const ptsFor = (v) => v === "win" ? 100 : v === "draw" ? 50 : 25;
+                        const statsFor = (v) => v === "win" ? { wins: FV.increment(1) } : v === "draw" ? { draws: FV.increment(1) } : { losses: FV.increment(1) };
+
+                        // Admin kararı var ve henüz puan verilmemişse uygula
+                        const adminResult = d.adminResult || null;
+                        if (adminResult && !pointsAwarded) {
+                            const myAdminVote = adminResult[uid];
+                            if (myAdminVote) {
+                                const matchRef = db.collection("matches").doc(doc.id);
+                                db.runTransaction(async (tx) => {
+                                    const mSnap = await tx.get(matchRef);
+                                    const cur = mSnap.data() || {};
+                                    if (cur.pointsAwarded) return null;
+                                    const ar = cur.adminResult || {};
+                                    const mv = ar[uid]; if (!mv) return null;
+                                    const myPts = ptsFor(mv);
+                                    tx.update(matchRef, { result: mv, resultConfirmed: true, pointsAwarded: true, adminResolved: true });
+                                    tx.update(db.collection("teams").doc(uid), { points: FV.increment(myPts), played: FV.increment(1), ...statsFor(mv) });
+                                    if (otherId && ar[otherId]) {
+                                        const ov = ar[otherId];
+                                        tx.update(db.collection("teams").doc(otherId), { points: FV.increment(ptsFor(ov)), played: FV.increment(1), ...statsFor(ov) });
+                                    }
+                                    db.collection("disputes").doc(doc.id).set({ status: "resolved", adminDecision: ar, resolvedAt: FV.serverTimestamp() }, { merge: true }).catch(() => {});
+                                    return { myVote: mv, myPts };
+                                }).then(res => {
+                                    if (!res) return;
+                                    const { myVote: v, myPts: p } = res;
+                                    setMe(m => ({ ...m, wins: (m.wins || 0) + (v === "win" ? 1 : 0), draws: (m.draws || 0) + (v === "draw" ? 1 : 0), losses: (m.losses || 0) + (v === "loss" ? 1 : 0), played: (m.played || 0) + 1, points: (m.points || 0) + p }));
+                                    setFloatPts(p); setTimeout(() => setFloatPts(null), 1500);
+                                    toast(`⚖️ Hakem kararı uygulandı! +${p} puan`, "success");
+                                }).catch(() => {});
+                                result = myAdminVote; resultConfirmed = true;
+                            }
+                        }
+
+                        if (myVote && opVote && !pointsAwarded && !adminResult) {
                             const agree = (myVote === "win" && opVote === "loss") ||
                                 (myVote === "loss" && opVote === "win") ||
                                 (myVote === "draw" && opVote === "draw");
@@ -2064,55 +2135,40 @@
                                     const snap = await tx.get(matchRef);
                                     const cur = snap.data() || {};
                                     if (cur.pointsAwarded) return;
-
                                     const curMyVote = cur[`result_${uid}`] || null;
                                     const curOpVote = otherId ? (cur[`result_${otherId}`] || null) : null;
                                     if (!curMyVote || !curOpVote) return;
-
-                                    const stillAgree = (curMyVote === "win" && curOpVote === "loss") ||
-                                        (curMyVote === "loss" && curOpVote === "win") ||
-                                        (curMyVote === "draw" && curOpVote === "draw");
+                                    const stillAgree = (curMyVote === "win" && curOpVote === "loss") || (curMyVote === "loss" && curOpVote === "win") || (curMyVote === "draw" && curOpVote === "draw");
                                     if (!stillAgree) return;
-
-                                    const ptsForVote = (v) => (v === "win" ? 100 : v === "draw" ? 50 : 25);
-                                    const myPts = ptsForVote(curMyVote);
-                                    const opPts = ptsForVote(curOpVote);
-
+                                    const myPts = ptsFor(curMyVote); const opPts = ptsFor(curOpVote);
                                     tx.update(matchRef, { result: curMyVote, resultConfirmed: true, pointsAwarded: true });
-
-                                    const myStats = curMyVote === "win" ? { wins: FV.increment(1) } : curMyVote === "draw" ? { draws: FV.increment(1) } : { losses: FV.increment(1) };
-                                    tx.update(myTeamRef, { points: FV.increment(myPts), played: FV.increment(1), ...myStats });
-
-                                    if (opTeamRef) {
-                                        const opStats = curOpVote === "win" ? { wins: FV.increment(1) } : curOpVote === "draw" ? { draws: FV.increment(1) } : { losses: FV.increment(1) };
-                                        tx.update(opTeamRef, { points: FV.increment(opPts), played: FV.increment(1), ...opStats });
-                                    }
+                                    tx.update(myTeamRef, { points: FV.increment(myPts), played: FV.increment(1), ...statsFor(curMyVote) });
+                                    if (opTeamRef) tx.update(opTeamRef, { points: FV.increment(opPts), played: FV.increment(1), ...statsFor(curOpVote) });
                                     return { myVote: curMyVote, myPts };
-                                })
-                                    .then((res) => {
-                                        if (!res) return;
-                                        const { myVote: v, myPts: p } = res;
-                                        // Lokal UI için hızlı güncelle
-                                        setMe(m => {
-                                            const wins = (m.wins || 0) + (v === "win" ? 1 : 0);
-                                            const draws = (m.draws || 0) + (v === "draw" ? 1 : 0);
-                                            const losses = (m.losses || 0) + (v === "loss" ? 1 : 0);
-                                            const played = (m.played || 0) + 1;
-                                            const points = (m.points || 0) + p;
-                                            return { ...m, wins, draws, losses, played, points };
-                                        });
-                                        setFloatPts(p);
-                                        setTimeout(() => setFloatPts(null), 1500);
-                                        toast(`Sonuç onaylandı! +${p} puan`, "success");
-                                    })
-                                    .catch(() => { });
-
-                                result = myVote;
-                                resultConfirmed = true;
+                                }).then((res) => {
+                                    if (!res) return;
+                                    const { myVote: v, myPts: p } = res;
+                                    setMe(m => ({ ...m, wins: (m.wins || 0) + (v === "win" ? 1 : 0), draws: (m.draws || 0) + (v === "draw" ? 1 : 0), losses: (m.losses || 0) + (v === "loss" ? 1 : 0), played: (m.played || 0) + 1, points: (m.points || 0) + p }));
+                                    setFloatPts(p); setTimeout(() => setFloatPts(null), 1500);
+                                    toast(`Sonuç onaylandı! +${p} puan`, "success");
+                                }).catch(() => { });
+                                result = myVote; resultConfirmed = true;
+                            } else if (!d.disputeRecorded) {
+                                // Oylar çakışıyor → itiraz kaydet
+                                db.collection("disputes").doc(doc.id).set({
+                                    matchId: doc.id,
+                                    participants: d.participants || [uid, otherId],
+                                    team1: { id: uid, name: teamListRef.current.find(t => t.id === uid)?.name || "Taraf 1", vote: myVote },
+                                    team2: { id: otherId || "", name: teamData.name || "Taraf 2", vote: opVote },
+                                    scheduledTime: d.scheduledTime || null,
+                                    status: "pending",
+                                    createdAt: FV.serverTimestamp()
+                                }, { merge: true }).catch(() => {});
+                                db.collection("matches").doc(doc.id).update({ disputed: true, disputeRecorded: true }).catch(() => {});
                             }
                         }
                         newMatchIds.add(doc.id);
-                        list.push({ ...d, id: doc.id, chatId: doc.id, team: teamData, result, resultConfirmed });
+                        list.push({ ...d, id: doc.id, chatId: doc.id, team: teamData, result, resultConfirmed, disputed, adminResolved });
                     });
                     // Sırala: en yeni eşleşme önce
                     list.sort((a, b) => {
