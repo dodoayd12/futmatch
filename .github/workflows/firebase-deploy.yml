@@ -54,11 +54,12 @@ jobs:
 
           ruleset_name = r.json()['name']
 
-          # Cloud Firestore release'ini güncelle
+          # Cloud Firestore release'ini güncelle (body: {release:{rulesetName:...}})
           r2 = requests.patch(
               f'https://firebaserules.googleapis.com/v1/projects/{project}/releases/cloud.firestore',
               headers=headers,
-              json={'rulesetName': ruleset_name}
+              params={'updateMask': 'rulesetName'},
+              json={'release': {'name': f'projects/{project}/releases/cloud.firestore', 'rulesetName': ruleset_name}}
           )
           if not r2.ok:
               print('Release güncelleme hatası:', r2.text); sys.exit(1)
