@@ -229,8 +229,8 @@
         ];
 
         const INFO_CARDS = [
-            { icon: "📋", title: "Maç Sonucu Nasıl Kaydedilir?", color: "#60a5fa", body: "Maç bittikten sonra sohbet ekranında sonuç kartı otomatik açılır. Rakip kaptanla birlikte aynı sonucu işaretleyin — iki taraf da onaylarsa istatistikler güncellenir." },
-            { icon: "⚖️", title: "İki Taraf Anlaşamazsa Ne Olur?", color: "#f97316", body: "Galibiyet/mağlubiyet oylamasında farklı seçim yapılırsa sonuç 'İtirazda' olarak işaretlenir. FutMatch hakemi incelemeye alır, fair-play puanınız etkilenebilir." },
+            { icon: "📋", title: "Maç Sonucu Nasıl Kaydedilir?", color: "#60a5fa", body: "Maç bittikten sonra sohbet ekranında sonuç kartı otomatik açılır. Rakip kaptanla birlikte uygun sonucu işaretleyin — iki taraf da onaylarsa istatistikler güncellenir." },
+            { icon: "⚖️", title: "İki Taraf Anlaşamazsa Ne Olur?", color: "#f97316", body: "Galibiyet/mağlubiyet oylamasında yanlış seçim yapılırsa sonuç 'İtirazda' olarak işaretlenir. FutMatch hakemi incelemeye alır, fair-play puanınız etkilenebilir." },
             { icon: "🏆", title: "FutMatch Turnuvası Nedir?", color: "#F5F234", body: "Genel sıralamada ilk 8'e giren takımlar sezon sonu FutMatch Turnuvası'na katılım hakkı kazanır. Eleme usulü format, maç başı ödüller ve şampiyon kupası!" },
             { icon: "⚡", title: "Nasıl Puan Kazanılır?", color: "#a78bfa", body: "Galibiyet +100 · Beraberlik +50 · Mağlubiyet +25 · Turnuva galibiyeti +500." },
         ];
@@ -1112,12 +1112,22 @@
                 else updateMe({ logo: next });
             }
 
+            const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+            const nameEditedAt = me.nameEditedAt || 0;
+            const nameLockedUntil = nameEditedAt + ONE_WEEK_MS;
+            const nameLocked = Date.now() < nameLockedUntil;
+            const nameLockDaysLeft = Math.ceil((nameLockedUntil - Date.now()) / (24 * 60 * 60 * 1000));
+
             function save() {
                 const name = editName.trim() || me.name;
+                const nameChanged = name !== me.name;
+                if (nameChanged && nameLocked) { setSaveErr(`Takım adı ${nameLockDaysLeft} gün sonra tekrar değiştirilebilir.`); return; }
                 if (hasProfanity(name)) { setSaveErr("Takım adı uygunsuz içerik barındırıyor."); return; }
                 if (hasProfanity(editDesc)) { setSaveErr("Açıklama uygunsuz içerik barındırıyor."); return; }
                 setSaveErr("");
-                updateMe({ name, desc: editDesc.trim(), logo: editLogo || me.logo || "⚽" });
+                const updates = { desc: editDesc.trim(), logo: editLogo || me.logo || "⚽" };
+                if (nameChanged) { updates.name = name; updates.nameEditedAt = Date.now(); }
+                updateMe(updates);
                 setEditing(false);
                 setShowLogoPicker(false);
             }
@@ -1139,7 +1149,10 @@
                                 </button>
                                 <div style={{ flex: 1, minWidth: 0, paddingRight: 44 }}>
                                     {editing ? (
-                                        <input value={editName} onChange={e => setEditName(e.target.value)} style={{ width: "100%", padding: "8px 12px", borderRadius: 10, border: `1px solid ${th.border2}`, background: th.inp, color: th.text, fontSize: 16, outline: "none", fontFamily: "'Outfit',sans-serif", marginBottom: 6 }} />
+                                        <div>
+                                            <input value={editName} onChange={e => !nameLocked && setEditName(e.target.value)} readOnly={nameLocked} style={{ width: "100%", padding: "8px 12px", borderRadius: 10, border: `1px solid ${nameLocked ? th.border : th.border2}`, background: nameLocked ? th.bg4 : th.inp, color: nameLocked ? th.text4 : th.text, fontSize: 16, outline: "none", fontFamily: "'Outfit',sans-serif", marginBottom: 4, cursor: nameLocked ? "not-allowed" : "text" }} />
+                                            {nameLocked && <div style={{ color: th.text4, fontSize: 10, marginBottom: 4 }}>🔒 Takım adı {nameLockDaysLeft} gün sonra değiştirilebilir</div>}
+                                        </div>
                                     ) : (
                                         <div style={{ fontWeight: 900, fontSize: 22, color: th.text, marginBottom: 2 }}>{me.name}</div>
                                     )}
@@ -1899,8 +1912,8 @@
                     color: "#fff",
                     border: "#333",
                     icon: (
-                        <svg width="20" height="20" viewBox="0 0 814 1000" fill="#fff">
-                            <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 376.7 0 248.3 0 124.5 0 56.5 23.5 15 73.9 15c50.9 0 79.8 36.5 151.3 36.5 72.2 0 103.7-36.5 163.8-36.5 53.3 0 92.5 30.4 119.2 74.5-78.9 43.2-114.5 122.7-114.5 212.6zm-180.9-107.2c0-57.8 23.5-113.6 68.7-151.5-40.8 6.4-93.2 40.8-125 77.3-27.3 33.5-51.5 83.4-51.5 133.3 0 56.5 27.3 113 70.2 148.4 41.5-10.2 137.5-67 137.5-207.5z"/>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff">
+                            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                         </svg>
                     ),
                 },
@@ -2147,6 +2160,14 @@
                                     setMe(m => ({ ...m, wins: (m.wins || 0) + (v === "win" ? 1 : 0), draws: (m.draws || 0) + (v === "draw" ? 1 : 0), losses: (m.losses || 0) + (v === "loss" ? 1 : 0), played: (m.played || 0) + 1, points: (m.points || 0) + p }));
                                     setFloatPts(p); setTimeout(() => setFloatPts(null), 1500);
                                     toast(`⚖️ Hakem kararı uygulandı! +${p} puan`, "success");
+                                    const matchId = doc.id;
+                                    db.collection("matches").doc(matchId).update({ chatDeleted: true }).catch(() => {});
+                                    db.collection("matches").doc(matchId).collection("messages").get()
+                                        .then(msgs => { const b = db.batch(); msgs.forEach(m2 => b.delete(m2.ref)); b.commit().catch(() => {}); }).catch(() => {});
+                                    if (otherId) {
+                                        db.collection("swipes").doc(uid).collection("records").doc(otherId).delete().catch(() => {});
+                                        db.collection("swipes").doc(otherId).collection("records").doc(uid).delete().catch(() => {});
+                                    }
                                 }).catch(() => {});
                                 result = myAdminVote; resultConfirmed = true;
                             }
@@ -2181,6 +2202,15 @@
                                     setMe(m => ({ ...m, wins: (m.wins || 0) + (v === "win" ? 1 : 0), draws: (m.draws || 0) + (v === "draw" ? 1 : 0), losses: (m.losses || 0) + (v === "loss" ? 1 : 0), played: (m.played || 0) + 1, points: (m.points || 0) + p }));
                                     setFloatPts(p); setTimeout(() => setFloatPts(null), 1500);
                                     toast(`Sonuç onaylandı! +${p} puan`, "success");
+                                    // Sohbet temizleme ve swipe sıfırlama
+                                    const matchId = doc.id;
+                                    db.collection("matches").doc(matchId).update({ chatDeleted: true }).catch(() => {});
+                                    db.collection("matches").doc(matchId).collection("messages").get()
+                                        .then(msgs => { const b = db.batch(); msgs.forEach(m2 => b.delete(m2.ref)); b.commit().catch(() => {}); }).catch(() => {});
+                                    if (otherId) {
+                                        db.collection("swipes").doc(uid).collection("records").doc(otherId).delete().catch(() => {});
+                                        db.collection("swipes").doc(otherId).collection("records").doc(uid).delete().catch(() => {});
+                                    }
                                 }).catch(() => { });
                                 result = myVote; resultConfirmed = true;
                             } else if (!d.disputeRecorded) {
@@ -2198,7 +2228,9 @@
                             }
                         }
                         newMatchIds.add(doc.id);
-                        list.push({ ...d, id: doc.id, chatId: doc.id, team: teamData, result, resultConfirmed, disputed, adminResolved });
+                        if (!d.chatDeleted) {
+                            list.push({ ...d, id: doc.id, chatId: doc.id, team: teamData, result, resultConfirmed, disputed, adminResolved });
+                        }
                     });
                     // Sırala: en yeni eşleşme önce
                     list.sort((a, b) => {
@@ -2357,7 +2389,7 @@
                 if (!top || !uid) return;
                 if (!me?.isPremium) {
                     if (dir === "super") { setShowPrem(true); return; }
-                    if (swipeMap.size >= 5 || matches.length >= 1) { setShowPrem(true); return; }
+                    if (swipeMap.size >= 5 || matches.length >= 1 || (me?.played || 0) >= 1) { setShowPrem(true); return; }
                 }
                 setSwipeDir(dir === "super" ? "right" : dir);
                 const topId = String(top.id);
