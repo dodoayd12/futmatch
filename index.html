@@ -1770,20 +1770,32 @@
                 if (providerName === "google") provider = new firebase.auth.GoogleAuthProvider();
                 else if (providerName === "facebook") provider = new firebase.auth.FacebookAuthProvider();
                 else if (providerName === "apple") { provider = new firebase.auth.OAuthProvider("apple.com"); provider.addScope("email"); provider.addScope("name"); }
-                auth.signInWithPopup(provider)
-                    .then(() => { setLoading(null); onSuccess(); })
-                    .catch(e => {
+                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if (isMobile) {
+                    auth.signInWithRedirect(provider).catch(e => {
                         setLoading(null);
                         const msgs = {
-                            "auth/popup-closed-by-user": "Pencere kapatıldı, tekrar dene.",
-                            "auth/cancelled-popup-request": "",
-                            "auth/account-exists-with-different-credential": "Bu e-posta başka bir yöntemle kayıtlı.",
                             "auth/network-request-failed": "Bağlantı hatası.",
-                            "auth/popup-blocked": "Popup engellendi. Tarayıcı izinlerini kontrol et.",
+                            "auth/account-exists-with-different-credential": "Bu e-posta başka bir yöntemle kayıtlı.",
                         };
-                        const msg = msgs[e.code];
-                        if (msg !== "") setErr(msg || e.message);
+                        setErr(msgs[e.code] || e.message);
                     });
+                } else {
+                    auth.signInWithPopup(provider)
+                        .then(() => { setLoading(null); onSuccess(); })
+                        .catch(e => {
+                            setLoading(null);
+                            const msgs = {
+                                "auth/popup-closed-by-user": "Pencere kapatıldı, tekrar dene.",
+                                "auth/cancelled-popup-request": "",
+                                "auth/account-exists-with-different-credential": "Bu e-posta başka bir yöntemle kayıtlı.",
+                                "auth/network-request-failed": "Bağlantı hatası.",
+                                "auth/popup-blocked": "Popup engellendi. Tarayıcı izinlerini kontrol et.",
+                            };
+                            const msg = msgs[e.code];
+                            if (msg !== "") setErr(msg || e.message);
+                        });
+                }
             }
 
             const providers = [
@@ -1881,6 +1893,29 @@
                 </div>
             );
         }
+        // ── ERROR BOUNDARY ────────────────────────────────────────────────────
+        class ErrorBoundary extends React.Component {
+            constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+            static getDerivedStateFromError(error) { return { hasError: true, error }; }
+            componentDidCatch(error, info) { console.error('[FutMatch] Render hatası:', error, info); }
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div style={{ width: "100%", maxWidth: 430, height: "100dvh", margin: "0 auto", background: "#000", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, fontFamily: "'Outfit',sans-serif" }}>
+                            <div style={{ fontSize: 48, marginBottom: 16 }}>⚽</div>
+                            <div style={{ color: "#fff", fontWeight: 900, fontSize: 22, marginBottom: 8 }}>Bir şeyler ters gitti</div>
+                            <div style={{ color: "#555", fontSize: 13, marginBottom: 32, textAlign: "center" }}>Uygulama beklenmedik bir hatayla karşılaştı.</div>
+                            <button onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
+                                style={{ padding: "14px 28px", background: "#F5F234", color: "#000", border: "none", borderRadius: 14, fontWeight: 800, fontSize: 15, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+                                Yeniden Başlat
+                            </button>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
+
         // ── APP ROOT (FIREBASE) ───────────────────────────────────────────────
         function App() {
             const [screen, setScreen] = React.useState("splash");
@@ -1918,13 +1953,28 @@
             }
 
             React.useEffect(() => {
+                auth.getRedirectResult().then(result => {
+                    if (result && result.user) {
+                        navigateAfterAuth(result.user.uid);
+                    }
+                }).catch(() => { });
+            }, []);
+
+            React.useEffect(() => {
                 const fallback = setTimeout(() => setScreen(s => s === "splash" ? "auth" : s), 5000);
                 let unsubbed = false;
+                let navigated = false;
                 const unsub = auth.onAuthStateChanged(user => {
                     if (unsubbed) return;
                     clearTimeout(fallback);
-                    if (user) { setTimeout(() => navigateAfterAuth(user.uid), 2400); }
-                    else setTimeout(() => setScreen("auth"), 2400);
+                    if (user) {
+                        if (!navigated) {
+                            navigated = true;
+                            setTimeout(() => navigateAfterAuth(user.uid), 2400);
+                        }
+                    } else {
+                        setTimeout(() => setScreen("auth"), 2400);
+                    }
                 });
                 return () => { unsubbed = true; clearTimeout(fallback); unsub(); };
             }, []);
@@ -2190,12 +2240,12 @@
             }
 
             const HIDE_LEFT_MS = 10 * 60 * 1000;
-            const sameCityTeams = teamList.filter(t => t.city === me.city);
+            const sameCityTeams = me ? teamList.filter(t => t.city === me.city) : [];
             const unswiped = sameCityTeams.filter(t => {
                 const rec = swipeMap.get(String(t.id));
                 if (!rec) return true;
-                if (rec.direction === "right" || rec.direction === "super") return false; // beğenilenler kalıcı gizli
-                if (rec.direction === "left") return (nowTick - rec.tsMs) > HIDE_LEFT_MS; // 10 dk sonra geri gelsin
+                if (rec.direction === "right" || rec.direction === "super") return false;
+                if (rec.direction === "left") return (nowTick - rec.tsMs) > HIDE_LEFT_MS;
                 return true;
             });
             const top = unswiped[0];
@@ -2351,7 +2401,7 @@
         }
 
         const root = ReactDOM.createRoot(document.getElementById("root"));
-        root.render(<App />);
+        root.render(<ErrorBoundary><App /></ErrorBoundary>);
     </script>
     <script>
         if ('serviceWorker' in navigator) {
