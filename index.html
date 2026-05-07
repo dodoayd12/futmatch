@@ -1203,6 +1203,90 @@
             );
         }
         // -- PROFILE TAB --
+        // ── ADMIN PANELİ ──────────────────────────────────────────────────────
+        function AdminPanel({ th, dark, onClose }) {
+            const [disputes, setDisputes] = React.useState([]);
+            const [loading, setLoading] = React.useState(true);
+            const [resolving, setResolving] = React.useState(null);
+            const [done, setDone] = React.useState({});
+
+            React.useEffect(() => {
+                db.collection("disputes").where("status", "==", "pending").get()
+                    .then(snap => {
+                        const list = [];
+                        snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+                        setDisputes(list);
+                        setLoading(false);
+                    }).catch(() => setLoading(false));
+            }, []);
+
+            function resolve(dispute, winner) {
+                setResolving(dispute.id);
+                const t1 = dispute.team1 || {};
+                const t2 = dispute.team2 || {};
+                let adminResult = {};
+                if (winner === "team1") { adminResult[t1.id] = "win"; adminResult[t2.id] = "loss"; }
+                else if (winner === "team2") { adminResult[t1.id] = "loss"; adminResult[t2.id] = "win"; }
+                else { adminResult[t1.id] = "draw"; adminResult[t2.id] = "draw"; }
+                db.collection("matches").doc(dispute.id).update({ adminResult })
+                    .then(() => {
+                        setDone(prev => ({ ...prev, [dispute.id]: winner }));
+                        setResolving(null);
+                    })
+                    .catch(err => { console.error(err); setResolving(null); });
+            }
+
+            return (
+                <div style={{ position: "fixed", inset: 0, zIndex: 600, background: "rgba(0,0,0,.85)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+                    <div style={{ width: "100%", maxWidth: 430, background: th.card, borderRadius: "20px 20px 0 0", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
+                        <div style={{ padding: "16px 18px 12px", borderBottom: `1px solid ${th.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                            <div style={{ fontWeight: 900, fontSize: 17, color: th.text }}>⚖️ İtirazlı Maçlar</div>
+                            <button onClick={onClose} style={{ background: "none", border: "none", color: th.text4, fontSize: 22, cursor: "pointer" }}>×</button>
+                        </div>
+                        <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px 24px" }}>
+                            {loading && <div style={{ textAlign: "center", color: th.text4, padding: 32 }}>Yükleniyor…</div>}
+                            {!loading && disputes.length === 0 && <div style={{ textAlign: "center", color: th.text4, padding: 32 }}>İtirazlı maç yok ✅</div>}
+                            {disputes.map(d => {
+                                const t1 = d.team1 || {}; const t2 = d.team2 || {};
+                                const isDone = !!done[d.id];
+                                const doneLabel = { team1: `${t1.name} kazandı`, team2: `${t2.name} kazandı`, draw: "Beraberlik" };
+                                return (
+                                    <div key={d.id} style={{ background: th.bg4, borderRadius: 16, padding: "14px", marginBottom: 12, border: `1px solid ${isDone ? "#4ade8044" : th.border}` }}>
+                                        <div style={{ fontWeight: 700, fontSize: 13, color: th.text, marginBottom: 8 }}>
+                                            {t1.name || "?"} vs {t2.name || "?"}
+                                        </div>
+                                        <div style={{ display: "flex", gap: 8, marginBottom: 10, fontSize: 11, color: th.text4 }}>
+                                            <span style={{ background: "rgba(248,113,113,.1)", border: "1px solid rgba(248,113,113,.3)", padding: "2px 8px", borderRadius: 8, color: "#f87171" }}>
+                                                {t1.name}: {t1.vote === "win" ? "Kazandık" : t1.vote === "draw" ? "Beraberlik" : "Kaybettik"}
+                                            </span>
+                                            <span style={{ background: "rgba(248,113,113,.1)", border: "1px solid rgba(248,113,113,.3)", padding: "2px 8px", borderRadius: 8, color: "#f87171" }}>
+                                                {t2.name}: {t2.vote === "win" ? "Kazandık" : t2.vote === "draw" ? "Beraberlik" : "Kaybettik"}
+                                            </span>
+                                        </div>
+                                        {isDone ? (
+                                            <div style={{ color: "#4ade80", fontWeight: 700, fontSize: 12 }}>✅ Karar verildi: {doneLabel[done[d.id]]}</div>
+                                        ) : (
+                                            <div style={{ display: "flex", gap: 6 }}>
+                                                <button disabled={resolving === d.id} onClick={() => resolve(d, "team1")} style={{ flex: 1, padding: "9px 4px", borderRadius: 10, border: "1px solid #4ade8044", background: "rgba(74,222,128,.08)", color: "#4ade80", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+                                                    {t1.name} Kazandı
+                                                </button>
+                                                <button disabled={resolving === d.id} onClick={() => resolve(d, "draw")} style={{ flex: 1, padding: "9px 4px", borderRadius: 10, border: `1px solid ${th.border}`, background: "transparent", color: th.text3, fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+                                                    Beraberlik
+                                                </button>
+                                                <button disabled={resolving === d.id} onClick={() => resolve(d, "team2")} style={{ flex: 1, padding: "9px 4px", borderRadius: 10, border: "1px solid #4ade8044", background: "rgba(74,222,128,.08)", color: "#4ade80", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+                                                    {t2.name} Kazandı
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         function ProfileTab({ me, rnk, prog, nextRnk, setShowPrem, updateMe, toggleDay, th, dark, setDark }) {
             const [editing, setEditing] = React.useState(false);
             const [editName, setEditName] = React.useState(me.name);
@@ -1211,6 +1295,7 @@
             const [showLogoPicker, setShowLogoPicker] = React.useState(false);
             const [showSettings, setShowSettings] = React.useState(false);
             const [saveErr, setSaveErr] = React.useState("");
+            const [showAdmin, setShowAdmin] = React.useState(false);
 
             React.useEffect(() => {
                 if (!editing) {
@@ -1356,6 +1441,12 @@
                                 {"⚡"} Premium'a Geç — ₺99/ay
                             </button>
                         )}
+                        {me.isAdmin && (
+                            <button onClick={() => setShowAdmin(true)} style={{ width: "100%", marginBottom: 16, padding: "12px", borderRadius: 14, border: "1px solid rgba(167,139,250,.4)", background: "rgba(167,139,250,.08)", color: "#a78bfa", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>
+                                ⚖️ İtirazlı Maçları Yönet
+                            </button>
+                        )}
+                        {showAdmin && <AdminPanel th={th} dark={dark} onClose={() => setShowAdmin(false)} />}
                         <div style={{ background: th.card, border: `1px solid ${th.border}`, borderRadius: 18, padding: "14px 16px", marginTop: -10, marginBottom: 18 }}>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
                                 <div style={{ color: th.text, fontWeight: 900, fontSize: 12, letterSpacing: 1.2 }}>📌 PUANLAMA</div>
