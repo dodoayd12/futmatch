@@ -2629,7 +2629,7 @@
                     {toastMsg && <Toast msg={toastMsg.msg} type={toastMsg.type} th={th} />}
                     {floatPts && <div style={{ position: "fixed", top: "36%", left: "50%", zIndex: 400, fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: 44, color: th.acc, pointerEvents: "none", animation: "floatUp 1.2s ease forwards", letterSpacing: 2 }}>+{floatPts}</div>}
                     {popup && <MatchPopup team={popup} me={me} th={th} onChat={() => { const matchId = popup._matchId || [uid, String(popup.id)].sort().join("_"); setPopup(null); setActiveChat(matchId); setTab("discover"); }} onClose={() => setPopup(null)} />}
-                    {showPrem && <PremiumModal th={th} onActivate={() => { setMe(m => ({ ...m, isPremium: true })); setShowPrem(false); toast("Premium aktif!", "success"); }} onClose={() => setShowPrem(false)} />}
+                    {showPrem && <PremiumModal th={th} onActivate={() => { updateMe({ isPremium: true }); setShowPrem(false); toast("Premium aktif!", "success"); }} onClose={() => setShowPrem(false)} />}
                     <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0 }}>
                         {tab === "home" && <HomeTab me={me} uid={uid} rnk={rnk} prog={prog} nextRnk={nextRnk} matches={matches} setTab={setTab} setActiveChat={setActiveChat} setShowPrem={setShowPrem} toggleDay={toggleDay} th={th} dark={dark} tourneyRank={myRankGlobal} tourneyQualified={tourneyQualified} allBoard={allBoard} />}
                         {tab === "discover" && (activeChat != null && matches.some(m => m.chatId === activeChat)
