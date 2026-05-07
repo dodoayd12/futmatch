@@ -632,10 +632,7 @@
                     {/* Header */}
                     <div style={{ padding: "14px 16px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${th.border}`, flexShrink: 0 }}>
                         <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: 22, color: th.text, letterSpacing: 2 }}>KEŞFET</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <span style={{ color: th.text4, fontSize: 12 }}>{unswiped.length} takım</span>
-                            <span style={{ padding: "3px 8px", borderRadius: 8, background: `${th.acc}20`, border: `1px solid ${th.acc}44`, color: th.acc, fontSize: 10, fontWeight: 700 }}>{rnk.icon} {rnk.label}</span>
-                        </div>
+                        <span style={{ padding: "3px 8px", borderRadius: 8, background: `${th.acc}20`, border: `1px solid ${th.acc}44`, color: th.acc, fontSize: 10, fontWeight: 700 }}>{rnk.icon} {rnk.label}</span>
                     </div>
 
                     {/* Drag-to-swipe card area */}
@@ -2131,6 +2128,7 @@
             const [showPrem, setShowPrem] = React.useState(false);
             const [toastMsg, setToastMsg] = React.useState(null);
             const [swipeDir, setSwipeDir] = React.useState(null);
+            const [localSwiped, setLocalSwiped] = React.useState(new Set());
             const [floatPts, setFloatPts] = React.useState(null);
             const injectedRef = React.useRef(new Set());
             const teamListRef = React.useRef([]);
@@ -2245,6 +2243,8 @@
                         m.set(doc.id, { direction: dir, tsMs });
                     });
                     setSwipeMap(m);
+                    // Firestore onaylayınca localSwiped'dan temizle
+                    setLocalSwiped(prev => { const n = new Set([...prev].filter(id => !m.has(id))); return n.size === prev.size ? prev : n; });
                 }, () => { });
                 return () => unsub();
             }, [uid]);
@@ -2279,9 +2279,9 @@
                                 if (cur[`ptsAwarded_${uid}`] || cur.pointsAwarded) return null;
                                 const mv = myVote;
                                 const myPts = ptsFor(mv);
-                                // Sadece kendi takımını güncelle — Firestore rules gereği
                                 tx.update(myTeamRef, { points: FV.increment(myPts), played: FV.increment(1), ...statsFor(mv) });
-                                tx.update(matchRef, { result: mv, resultConfirmed: true, [`ptsAwarded_${uid}`]: true, ...extraMatchFields });
+                                // chatDeleted transaction içinde atomik olarak set ediliyor
+                                tx.update(matchRef, { result: mv, resultConfirmed: true, [`ptsAwarded_${uid}`]: true, chatDeleted: true, ...extraMatchFields });
                                 return { myVote: mv, myPts };
                             }).then(res => {
                                 if (!res) return;
@@ -2289,15 +2289,14 @@
                                 setMe(m => ({ ...m, wins: (m.wins || 0) + (v === "win" ? 1 : 0), draws: (m.draws || 0) + (v === "draw" ? 1 : 0), losses: (m.losses || 0) + (v === "loss" ? 1 : 0), played: (m.played || 0) + 1, points: (m.points || 0) + p }));
                                 setFloatPts(p); setTimeout(() => setFloatPts(null), 1500);
                                 afterFn && afterFn(v, p);
-                                // Sohbet + swipe temizle
-                                db.collection("matches").doc(matchId).update({ chatDeleted: true }).catch(() => {});
+                                // Mesajları sil + swipe sıfırla
                                 db.collection("matches").doc(matchId).collection("messages").get()
                                     .then(msgs => { const b = db.batch(); msgs.forEach(m2 => b.delete(m2.ref)); b.commit().catch(() => {}); }).catch(() => {});
                                 if (otherId) {
                                     db.collection("swipes").doc(uid).collection("records").doc(otherId).delete().catch(() => {});
                                     db.collection("swipes").doc(otherId).collection("records").doc(uid).delete().catch(() => {});
                                 }
-                            }).catch(() => {});
+                            }).catch(err => console.error("[applyResult] Transaction hatası:", err));
                         }
 
                         // Admin kararı var ve henüz puan verilmemişse uygula
@@ -2485,7 +2484,9 @@
             const HIDE_LEFT_MS = 10 * 60 * 1000;
             const sameCityTeams = me ? teamList.filter(t => t.city === me.city) : [];
             const unswiped = sameCityTeams.filter(t => {
-                const rec = swipeMap.get(String(t.id));
+                const id = String(t.id);
+                if (localSwiped.has(id)) return false; // anında yerel filtre (ghost card önle)
+                const rec = swipeMap.get(id);
                 if (!rec) return true;
                 if (rec.direction === "right" || rec.direction === "super") return false;
                 if (rec.direction === "left") return (nowTick - rec.tsMs) > HIDE_LEFT_MS;
@@ -2503,6 +2504,7 @@
                 }
                 setSwipeDir(dir === "super" ? "right" : dir);
                 const topId = String(top.id);
+                setLocalSwiped(prev => new Set([...prev, topId])); // anında gizle
 
                 // 1) Kendi swipe'ımızı kaydet (fire-and-forget)
                 db.collection("swipes").doc(uid).collection("records").doc(topId)
