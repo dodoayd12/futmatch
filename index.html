@@ -668,9 +668,13 @@
                     {/* Action buttons */}
                     <div style={{ flexShrink: 0, padding: "0 20px 12px" }}>
                         <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 10 }}>
-                            <button onClick={() => doSwipe("left")} style={{ width: 58, height: 58, borderRadius: 29, border: `2px solid #f87171`, background: "rgba(248,113,113,0.08)", cursor: "pointer", transition: "all .15s" }} />
+                            <button onClick={() => doSwipe("left")} style={{ width: 58, height: 58, borderRadius: 29, border: `2px solid #f87171`, background: "rgba(248,113,113,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
                             <button onClick={() => doSwipe("super")} style={{ width: 52, height: 52, borderRadius: 26, border: `2px solid #F5F234`, background: "transparent", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>⭐</button>
-                            <button onClick={() => doSwipe("right")} style={{ width: 58, height: 58, borderRadius: 29, border: `2px solid #4ade80`, background: "rgba(74,222,128,0.08)", cursor: "pointer", transition: "all .15s" }} />
+                            <button onClick={() => doSwipe("right")} style={{ width: 58, height: 58, borderRadius: 29, border: `2px solid #4ade80`, background: "rgba(74,222,128,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </button>
                         </div>
                         <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
                             <span style={{ color: th.text5, fontSize: 10 }}>← Sola: Geç</span>
