@@ -1770,32 +1770,25 @@
                 if (providerName === "google") provider = new firebase.auth.GoogleAuthProvider();
                 else if (providerName === "facebook") provider = new firebase.auth.FacebookAuthProvider();
                 else if (providerName === "apple") { provider = new firebase.auth.OAuthProvider("apple.com"); provider.addScope("email"); provider.addScope("name"); }
-                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-                if (isMobile) {
-                    auth.signInWithRedirect(provider).catch(e => {
+                auth.signInWithPopup(provider)
+                    .then(() => { setLoading(null); onSuccess(); })
+                    .catch(e => {
                         setLoading(null);
+                        if (e.code === "auth/popup-blocked") {
+                            auth.signInWithRedirect(provider).catch(() => {
+                                setErr("Giriş başlatılamadı. Tarayıcı ayarlarını kontrol et.");
+                            });
+                            return;
+                        }
                         const msgs = {
-                            "auth/network-request-failed": "Bağlantı hatası.",
+                            "auth/popup-closed-by-user": "Pencere kapatıldı, tekrar dene.",
+                            "auth/cancelled-popup-request": "",
                             "auth/account-exists-with-different-credential": "Bu e-posta başka bir yöntemle kayıtlı.",
+                            "auth/network-request-failed": "Bağlantı hatası.",
                         };
-                        setErr(msgs[e.code] || e.message);
+                        const msg = msgs[e.code];
+                        if (msg !== "") setErr(msg || e.message);
                     });
-                } else {
-                    auth.signInWithPopup(provider)
-                        .then(() => { setLoading(null); onSuccess(); })
-                        .catch(e => {
-                            setLoading(null);
-                            const msgs = {
-                                "auth/popup-closed-by-user": "Pencere kapatıldı, tekrar dene.",
-                                "auth/cancelled-popup-request": "",
-                                "auth/account-exists-with-different-credential": "Bu e-posta başka bir yöntemle kayıtlı.",
-                                "auth/network-request-failed": "Bağlantı hatası.",
-                                "auth/popup-blocked": "Popup engellendi. Tarayıcı izinlerini kontrol et.",
-                            };
-                            const msg = msgs[e.code];
-                            if (msg !== "") setErr(msg || e.message);
-                        });
-                }
             }
 
             const providers = [
@@ -1962,6 +1955,9 @@
                 }).catch(() => { });
             }, []);
 
+            const currentScreenRef = React.useRef("splash");
+            React.useEffect(() => { currentScreenRef.current = screen; }, [screen]);
+
             React.useEffect(() => {
                 const fallback = setTimeout(() => setScreen(s => s === "splash" ? "auth" : s), 5000);
                 let unsubbed = false;
@@ -1974,7 +1970,9 @@
                         if (authScreenTimer) { clearTimeout(authScreenTimer); authScreenTimer = null; }
                         if (!navigated) {
                             navigated = true;
-                            setTimeout(() => navigateAfterAuth(user.uid), 2400);
+                            // Splash'teyken animasyon süresini bekle; login/diğer ekranlarda anında geç
+                            const delay = currentScreenRef.current === "splash" ? 2400 : 0;
+                            setTimeout(() => navigateAfterAuth(user.uid), delay);
                         }
                     } else {
                         authScreenTimer = setTimeout(() => setScreen("auth"), 2400);
