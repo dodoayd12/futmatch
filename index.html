@@ -232,7 +232,7 @@
             { icon: "📋", title: "Maç Sonucu Nasıl Kaydedilir?", color: "#60a5fa", body: "Maç bittikten sonra sohbet ekranında sonuç kartı otomatik açılır. Rakip kaptanla birlikte aynı sonucu işaretleyin — iki taraf da onaylarsa istatistikler güncellenir." },
             { icon: "⚖️", title: "İki Taraf Anlaşamazsa Ne Olur?", color: "#f97316", body: "Galibiyet/mağlubiyet oylamasında farklı seçim yapılırsa sonuç 'İtirazda' olarak işaretlenir. FutMatch hakemi incelemeye alır, fair-play puanınız etkilenebilir." },
             { icon: "🏆", title: "FutMatch Turnuvası Nedir?", color: "#F5F234", body: "Genel sıralamada ilk 8'e giren takımlar sezon sonu FutMatch Turnuvası'na katılım hakkı kazanır. Eleme usulü format, maç başı ödüller ve şampiyon kupası!" },
-            { icon: "⚡", title: "Aktif Puan Sistemimiz", color: "#a78bfa", body: "Eşleşme +35 · Süper beğeni +60 · Maç onayı +25 · Galibiyet +100 · Beraberlik +50 (iki takım) · Mağlubiyet +25 · Turnuva galibiyeti +500." },
+            { icon: "⚡", title: "Nasıl Puan Kazanılır?", color: "#a78bfa", body: "Galibiyet +100 · Beraberlik +50 · Mağlubiyet +25 · Turnuva galibiyeti +500." },
         ];
 
         const RANK_ORDER = ["Bronz", "Gümüş", "Altın", "Platin", "Elmas"];
@@ -285,6 +285,32 @@
         }
         function IStyle(th) { return { width: "100%", padding: "14px 16px", borderRadius: 12, border: `1px solid ${th ? th.border2 : "#252525"}`, background: th ? th.inp : "#0d0d0d", color: th ? th.text : "#fff", fontSize: 14, outline: "none", fontFamily: "'Outfit',sans-serif" }; }
         function SecTit({ th, children }) { return <div style={{ color: th.text4, fontSize: 10, letterSpacing: 2, fontWeight: 700, marginBottom: 10 }}>{children}</div>; }
+
+        // ── KÜFÜR FİLTRESİ ───────────────────────────────────────────────────
+        function hasProfanity(input) {
+            if (!input) return false;
+            const norm = s => s.toLowerCase()
+                .replace(/[ıİ]/g, 'i').replace(/[şŞ]/g, 's').replace(/[çÇ]/g, 'c')
+                .replace(/[ğĞ]/g, 'g').replace(/[üÜ]/g, 'u').replace(/[öÖ]/g, 'o')
+                .replace(/[@4]/g, 'a').replace(/[3]/g, 'e').replace(/[0]/g, 'o')
+                .replace(/[1!|]/g, 'i').replace(/[$5]/g, 's').replace(/[2]/g, 'z')
+                .replace(/[7]/g, 't').replace(/[8]/g, 'b').replace(/[6]/g, 'g');
+            const full = norm(input).replace(/[^a-z]/g, '');
+            const words = norm(input).split(/[^a-z]+/).filter(w => w.length > 0);
+            // Substring: uzun/orta küfürler bitişik yazılarak gizlenebilir
+            const subList = [
+                'sik','orospu','ibne','kaltak','gavat','surtuk','kahpe',
+                'amina','amk','amq','sikim','sikis','sikici','anneni','ananin',
+                'anasini','amcik','pic','bok','orospu','picligi','gotlek',
+                'fuck','shit','bitch','cock','dick','cunt','pussy','asshole',
+                'bastard','whore','nigga','retard'
+            ];
+            // Tam kelime: meşru isimlerde alt dizi olarak görünebilecek kısa kelimeler
+            const exactList = ['am','oc','got','sex'];
+            if (subList.some(w => full.includes(w))) return true;
+            if (exactList.some(w => words.includes(w))) return true;
+            return false;
+        }
 
         // ── SPLASH ────────────────────────────────────────────────────────────
         function Splash() {
@@ -350,9 +376,11 @@
             const dists = GEO[data.city] || [];
             function next() {
                 if (step === 0 && !data.name.trim()) { setErr("Takım adı zorunlu"); return; }
+                if (step === 0 && hasProfanity(data.name)) { setErr("Takım adı uygunsuz içerik barındırıyor."); return; }
                 if (step === 1 && !data.city) { setErr("Şehir seçmelisin"); return; }
                 if (step === 1 && !data.district) { setErr("İlçe seçmelisin"); return; }
                 if (step === 2 && data.avail.length === 0) { setErr("En az bir gün seçmelisin"); return; }
+                if (step === 3 && hasProfanity(data.desc)) { setErr("Takım açıklaması uygunsuz içerik barındırıyor."); return; }
                 setErr("");
                 if (step < 3) setStep(s => s + 1);
                 else onComplete({ id: 0, name: data.name.trim(), city: data.city, district: data.district, logo: data.logo, level: data.level, players: data.players, avail: data.avail, desc: data.desc.trim(), wins: 0, losses: 0, draws: 0, points: 0, played: 0, rating: 0, isPremium: false });
@@ -879,8 +907,8 @@
                             <div style={{ fontWeight: 800, fontSize: 13, color: th.acc, marginBottom: 6 }}>📅 Maç Daveti & Sonuç Sistemi</div>
                             <div style={{ color: th.text3, fontSize: 12, lineHeight: 1.65 }}>
                                 <b style={{ color: th.text2 }}>Maç Daveti:</b> Sohbet ekranında 📅 ikonuna tıkla, gün ve saat seç, davet gönder. Rakip kabul edince maç onaylanır.<br />
-                                <b style={{ color: th.text2 }}>Sonuç Onaylama:</b> Maç saatinden sonra sonuç kartı açılır. Her iki takım da aynı sonucu seçerse istatistikler otomatik güncellenir.<br />
-                                <b style={{ color: th.text2 }}>İtiraz:</b> Taraflar farklı sonuç seçerse ⚖️ FutMatch hakemi devreye girer ve inceleme sonucu bildirilir.
+                                <b style={{ color: th.text2 }}>Sonuç Onaylama:</b> Maç saatinden sonra sonuç kartı açılır. Her iki takım da uygun sonucu seçerse istatistikler otomatik güncellenir.<br />
+                                <b style={{ color: th.text2 }}>İtiraz:</b> Taraflar yanlış sonuç seçerse ⚖️ FutMatch hakemi devreye girer ve inceleme sonucu bildirilir.
                             </div>
                         </div>
                     )}
@@ -1065,6 +1093,7 @@
             const [editLogo, setEditLogo] = React.useState(me.logo || "⚽");
             const [showLogoPicker, setShowLogoPicker] = React.useState(false);
             const [showSettings, setShowSettings] = React.useState(false);
+            const [saveErr, setSaveErr] = React.useState("");
 
             React.useEffect(() => {
                 if (!editing) {
@@ -1084,11 +1113,11 @@
             }
 
             function save() {
-                updateMe({
-                    name: editName.trim() || me.name,
-                    desc: editDesc.trim(),
-                    logo: editLogo || me.logo || "⚽",
-                });
+                const name = editName.trim() || me.name;
+                if (hasProfanity(name)) { setSaveErr("Takım adı uygunsuz içerik barındırıyor."); return; }
+                if (hasProfanity(editDesc)) { setSaveErr("Açıklama uygunsuz içerik barındırıyor."); return; }
+                setSaveErr("");
+                updateMe({ name, desc: editDesc.trim(), logo: editLogo || me.logo || "⚽" });
                 setEditing(false);
                 setShowLogoPicker(false);
             }
@@ -1166,9 +1195,10 @@
                                     <div style={{ height: "100%", width: `${prog}%`, background: `linear-gradient(90deg,${th.acc},${dark ? "#fff" : "#222"})`, borderRadius: 2, transition: "width .5s ease" }} />
                                 </div>
                             </div>
+                            {saveErr && editing && <div style={{ color: "#f87171", fontSize: 11, marginTop: 8, fontWeight: 600 }}>⚠️ {saveErr}</div>}
                             <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
                                 <button onClick={() => { if (editing) save(); else setEditing(true); }} style={{ flex: 1, padding: "9px", borderRadius: 11, border: `1px solid ${th.border}`, background: editing ? th.acc : th.bg4, color: editing ? th.accT : th.text3, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit',sans-serif", transition: "all .2s" }}>{editing ? "✓ Kaydet" : "✏️ Düzenle"}</button>
-                                {editing && <button onClick={() => { setEditing(false); setShowLogoPicker(false); }} style={{ flex: 1, padding: "9px", borderRadius: 11, border: `1px solid ${th.border}`, background: "transparent", color: th.text4, fontSize: 12, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>{"İptal"}</button>}
+                                {editing && <button onClick={() => { setEditing(false); setShowLogoPicker(false); setSaveErr(""); }} style={{ flex: 1, padding: "9px", borderRadius: 11, border: `1px solid ${th.border}`, background: "transparent", color: th.text4, fontSize: 12, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>{"İptal"}</button>}
                             </div>
                         </div>
                         <div style={{ background: th.card, border: `1px solid ${th.border}`, borderRadius: 18, marginBottom: 14, overflow: "hidden" }}>
