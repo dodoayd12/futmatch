@@ -757,16 +757,26 @@
 
             function doReport() {
                 if (!otherId || !reportReason) return;
+                // Son 10 mesajı al (type:text olanlar dahil hepsi)
+                const allMsgs = chats[chatId] || [];
+                const last10 = allMsgs.slice(-10).map(m => ({
+                    from: m.from === "me" ? "reporter" : "reported",
+                    text: m.text || `[${m.type}]`,
+                    ts: m.ts instanceof Date ? m.ts.toISOString() : (m.ts || "")
+                }));
                 db.collection("reports").add({
                     reporterId: uid,
                     reportedId: otherId,
                     reportedTeam: team?.name || "?",
                     matchId: chatId,
                     reason: reportReason,
+                    last10Messages: last10,
                     createdAt: FV.serverTimestamp()
-                }).catch(() => {});
+                }).catch(err => console.error("Report hatası:", err));
+                // Şikayet edince otomatik engelle
+                onBlock && onBlock(otherId);
                 setReportDone(true);
-                setTimeout(() => { setShowReport(false); setReportReason(""); setReportDone(false); }, 2000);
+                setTimeout(() => { setShowReport(false); setReportReason(""); setReportDone(false); onBack(); }, 2000);
             }
 
             return (
