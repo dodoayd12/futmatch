@@ -2484,6 +2484,7 @@
 
             function doSwipe(dir) {
                 if (!top || !uid) return;
+                const like = dir === "right" || dir === "super";
                 if (!me?.isPremium) {
                     if (dir === "super") { setShowPrem(true); return; }
                     if (swipeMap.size >= 5 || matches.length >= 1 || (me?.played || 0) >= 1) { setShowPrem(true); return; }
