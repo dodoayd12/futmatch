@@ -708,6 +708,7 @@
             const [selTime, setSelTime] = React.useState("15:00");
             const [showMenu, setShowMenu] = React.useState(false);
             const [showReport, setShowReport] = React.useState(false);
+            const [showBlockConfirm, setShowBlockConfirm] = React.useState(false);
             const [reportReason, setReportReason] = React.useState("");
             const [reportDone, setReportDone] = React.useState(false);
             const match = matches.find(m => m.chatId === chatId);
@@ -748,16 +749,26 @@
             const team = match?.team;
             const otherId = (match?.participants || []).find(p => p !== uid) || null;
 
+            function deleteMessages() {
+                db.collection("matches").doc(chatId).collection("messages").get()
+                    .then(snap => {
+                        const b = db.batch();
+                        snap.forEach(d => b.delete(d.ref));
+                        b.commit().catch(() => {});
+                    }).catch(() => {});
+            }
+
             function doBlock() {
                 if (!otherId) return;
                 onBlock && onBlock(otherId);
+                deleteMessages();
+                setShowBlockConfirm(false);
                 setShowMenu(false);
                 onBack();
             }
 
             function doReport() {
                 if (!otherId || !reportReason) return;
-                // Son 10 mesajı al (type:text olanlar dahil hepsi)
                 const allMsgs = chats[chatId] || [];
                 const last10 = allMsgs.slice(-10).map(m => ({
                     from: m.from === "me" ? "reporter" : "reported",
@@ -773,8 +784,8 @@
                     last10Messages: last10,
                     createdAt: FV.serverTimestamp()
                 }).catch(err => console.error("Report hatası:", err));
-                // Şikayet edince otomatik engelle
                 onBlock && onBlock(otherId);
+                deleteMessages();
                 setReportDone(true);
                 setTimeout(() => { setShowReport(false); setReportReason(""); setReportDone(false); onBack(); }, 2000);
             }
@@ -793,13 +804,30 @@
                     </div>
                     {/* Dropdown menu */}
                     {showMenu && (
-                        <div style={{ position: "absolute", top: 56, right: 12, zIndex: 200, background: th.card, border: `1px solid ${th.border2}`, borderRadius: 14, overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,.35)", minWidth: 180 }}>
+                        <div style={{ position: "absolute", top: 56, right: 12, zIndex: 200, background: th.card, border: `1px solid ${th.border2}`, borderRadius: 14, overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,.35)", minWidth: 190 }}>
                             <button onClick={() => { setShowMenu(false); setShowReport(true); }} style={{ width: "100%", padding: "13px 18px", background: "none", border: "none", borderBottom: `1px solid ${th.border}`, color: "#f97316", fontSize: 14, fontWeight: 700, cursor: "pointer", textAlign: "left", fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 10 }}>
                                 ⚠️ Şikayet Et
                             </button>
-                            <button onClick={doBlock} style={{ width: "100%", padding: "13px 18px", background: "none", border: "none", color: "#f87171", fontSize: 14, fontWeight: 700, cursor: "pointer", textAlign: "left", fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 10 }}>
+                            <button onClick={() => { setShowMenu(false); setShowBlockConfirm(true); }} style={{ width: "100%", padding: "13px 18px", background: "none", border: "none", color: "#f87171", fontSize: 14, fontWeight: 700, cursor: "pointer", textAlign: "left", fontFamily: "'Outfit',sans-serif", display: "flex", alignItems: "center", gap: 10 }}>
                                 🚫 Engelle
                             </button>
+                        </div>
+                    )}
+                    {/* Block confirmation popup */}
+                    {showBlockConfirm && (
+                        <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+                            <div style={{ background: th.card, borderRadius: 20, padding: 24, width: "100%", maxWidth: 340, textAlign: "center" }}>
+                                <div style={{ fontSize: 40, marginBottom: 12 }}>🚫</div>
+                                <div style={{ fontWeight: 900, fontSize: 17, color: th.text, marginBottom: 8 }}>Engelle</div>
+                                <div style={{ color: th.text3, fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
+                                    <b style={{ color: th.text }}>{team?.name}</b> engellenecek.<br />
+                                    Sohbet mesajları silinecek ve bu takım Keşfet'te bir daha görünmeyecek.
+                                </div>
+                                <div style={{ display: "flex", gap: 10 }}>
+                                    <button onClick={() => setShowBlockConfirm(false)} style={{ flex: 1, padding: "12px", borderRadius: 12, border: `1px solid ${th.border}`, background: "transparent", color: th.text4, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>Vazgeç</button>
+                                    <button onClick={doBlock} style={{ flex: 1, padding: "12px", borderRadius: 12, border: "none", background: "#f87171", color: "#fff", fontSize: 13, fontWeight: 800, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>Engelle</button>
+                                </div>
+                            </div>
                         </div>
                     )}
                     {/* Report modal */}
@@ -815,7 +843,7 @@
                                 ) : (
                                     <>
                                         <div style={{ fontWeight: 900, fontSize: 17, color: th.text, marginBottom: 4 }}>⚠️ Şikayet Et</div>
-                                        <div style={{ color: th.text4, fontSize: 12, marginBottom: 16 }}>{team?.name} · Şikayet sebebini seç</div>
+                                        <div style={{ color: th.text4, fontSize: 12, marginBottom: 16 }}>{team?.name} · Sebep seç · Sohbet silinecek ve kullanıcı engellenecek</div>
                                         {["Küfür / Hakaret", "Sahtekarlık / Hile", "Spam / Sahte Maç", "Uygunsuz Davranış", "Diğer"].map(r => (
                                             <button key={r} onClick={() => setReportReason(r)} style={{ width: "100%", padding: "11px 14px", marginBottom: 8, borderRadius: 12, border: `1.5px solid ${reportReason === r ? "#f97316" : th.border}`, background: reportReason === r ? "rgba(249,115,22,.1)" : "transparent", color: reportReason === r ? "#f97316" : th.text3, fontSize: 13, fontWeight: reportReason === r ? 700 : 400, cursor: "pointer", textAlign: "left", fontFamily: "'Outfit',sans-serif", transition: "all .15s" }}>
                                                 {r}
