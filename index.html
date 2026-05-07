@@ -358,7 +358,7 @@
                 else onComplete({ id: 0, name: data.name.trim(), city: data.city, district: data.district, logo: data.logo, level: data.level, players: data.players, avail: data.avail, desc: data.desc.trim(), wins: 0, losses: 0, draws: 0, points: 0, played: 0, rating: 0, isPremium: false });
             }
             function toggleDay(d) { setData(p => ({ ...p, avail: p.avail.includes(d) ? p.avail.filter(x => x !== d) : [...p.avail, d] })); }
-            const steps = ["Takım Adı", "Konum", "Müsaitlik", "Hazır!"];
+            const steps = ["Takım Adı", "Konum", "Uygun Günler", "Hazır!"];
             const prog = (step / (steps.length - 1)) * 100;
             const S = { background: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: 12, padding: "14px 16px", color: "#fff", fontSize: 14, outline: "none", fontFamily: "'Outfit',sans-serif", width: "100%" };
             return (
@@ -419,7 +419,7 @@
                         )}
                         {step === 2 && (
                             <div style={{ animation: "fadeUp .4s ease" }}>
-                                <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: 40, color: "#fff", lineHeight: 1, marginBottom: 6 }}>MÜSAİTLİK</div>
+                                <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: 40, color: "#fff", lineHeight: 1, marginBottom: 6 }}>UYGUN GÜNLER</div>
                                 <div style={{ color: "#555", fontSize: 13, marginBottom: 28 }}>Hangi günler sahaya çıkabilirsiniz?</div>
                                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                                     {DAYS.map(d => {
@@ -438,7 +438,7 @@
                                 <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: 44, color: "#fff", lineHeight: 1, letterSpacing: 2, marginBottom: 4 }}>{data.name}</div>
                                 <div style={{ color: "#555", fontSize: 13, marginBottom: 32 }}>📍 {data.city} · {data.district}</div>
                                 <div style={{ background: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: 18, padding: "20px", marginBottom: 24, textAlign: "left" }}>
-                                    {[["Seviye", data.level], ["Oyuncu", `${data.players} kişi`], ["Müsaitlik", data.avail.length > 0 ? data.avail.join(", ") : "—"]].map(([l, v]) => (
+                                    {[["Seviye", data.level], ["Oyuncu", `${data.players} kişi`], ["Uygun Günler", data.avail.length > 0 ? data.avail.join(", ") : "—"]].map(([l, v]) => (
                                         <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1a1a1a" }}>
                                             <span style={{ color: "#555", fontSize: 13 }}>{l}</span><span style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>{v}</span>
                                         </div>
@@ -594,7 +594,7 @@
                 return (
                     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: th.bg, padding: 24 }}>
                         <div style={{ fontSize: 52, marginBottom: 16 }}>⏳</div>
-                        <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: 28, color: th.text, letterSpacing: 1.5, marginBottom: 8 }}>BÖLGENDE KART KALMADI</div>
+                        <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: 28, color: th.text, letterSpacing: 1.5, marginBottom: 8, textAlign: "center" }}>BÖLGENDE UYGUN TAKM KALMADI</div>
                         <div style={{ color: th.text4, fontSize: 13, textAlign: "center", lineHeight: 1.7 }}>
                             Bölgenizdeki takımlar yenilenene kadar eşleşme bekleyin.
                         </div>
@@ -1690,7 +1690,7 @@
                         {/* Availability */}
                         <div style={{ padding: "14px 14px 0" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                                <SecTit th={th}>MÜSAİTLİK</SecTit>
+                                <SecTit th={th}>UYGUN GÜNLER</SecTit>
                                 <span style={{ color: th.text4, fontSize: 10 }}>Tıkla düzenle</span>
                             </div>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
