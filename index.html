@@ -1843,7 +1843,7 @@
             return (
                 <div style={{ width: "100%", maxWidth: 430, height: "100dvh", margin: "0 auto", background: "#000", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
                     <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(circle at 50% 25%, rgba(245,242,52,.07) 0%, transparent 60%)", pointerEvents: "none" }} />
-                    <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "32px 28px", animation: "fadeUp .5s ease" }}>
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "32px 28px", animation: "fadeUp .5s ease forwards" }}>
                         {showAgreement && <AgreementModal th={{ card: "#0d0d0d", border: "#1c1c1c", border2: "#252525", border3: "#333", inp: "#0d0d0d", text: "#fff", text3: "#999", text4: "#555", text5: "#2e2e2e" }} onClose={() => setShowAgreement(false)} />}
                         {/* Logo / Brand */}
                         <div style={{ textAlign: "center", marginBottom: 48 }}>
@@ -1946,10 +1946,12 @@
 
             function navigateAfterAuth(userId) {
                 setUid(userId);
+                const hangGuard = setTimeout(() => setScreen("onboard"), 8000);
                 db.collection("teams").doc(userId).get().then(snap => {
+                    clearTimeout(hangGuard);
                     if (snap.exists) { setMe({ ...snap.data(), id: userId }); setScreen("home"); }
                     else setScreen("onboard");
-                }).catch(() => setScreen("onboard"));
+                }).catch(() => { clearTimeout(hangGuard); setScreen("onboard"); });
             }
 
             React.useEffect(() => {
@@ -1964,19 +1966,26 @@
                 const fallback = setTimeout(() => setScreen(s => s === "splash" ? "auth" : s), 5000);
                 let unsubbed = false;
                 let navigated = false;
+                let authScreenTimer = null;
                 const unsub = auth.onAuthStateChanged(user => {
                     if (unsubbed) return;
                     clearTimeout(fallback);
                     if (user) {
+                        if (authScreenTimer) { clearTimeout(authScreenTimer); authScreenTimer = null; }
                         if (!navigated) {
                             navigated = true;
                             setTimeout(() => navigateAfterAuth(user.uid), 2400);
                         }
                     } else {
-                        setTimeout(() => setScreen("auth"), 2400);
+                        authScreenTimer = setTimeout(() => setScreen("auth"), 2400);
                     }
                 });
-                return () => { unsubbed = true; clearTimeout(fallback); unsub(); };
+                return () => {
+                    unsubbed = true;
+                    clearTimeout(fallback);
+                    if (authScreenTimer) clearTimeout(authScreenTimer);
+                    unsub();
+                };
             }, []);
 
             React.useEffect(() => {

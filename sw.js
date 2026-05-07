@@ -1,5 +1,5 @@
 // Cache versiyonunu her deploy'da artır → eski cache silinir
-const CACHE_NAME = 'futmatch-v7';
+const CACHE_NAME = 'futmatch-v8';
 const STATIC_ASSETS = [
   '/logo.jpg',
   '/manifest.json',
