@@ -1,0 +1,19 @@
+﻿15.16.0
+
+=== Deploying to 'futmatch1-e21d5'...
+
+i  deploying hosting
+i  hosting[futmatch1-e21d5]: beginning deploy...
+i  hosting[futmatch1-e21d5]: found 13 files in .
+i  hosting: uploading new files [0/3] (0%)
+i  hosting: upload complete
++  hosting[futmatch1-e21d5]: file upload complete
+i  hosting[futmatch1-e21d5]: finalizing version...
++  hosting[futmatch1-e21d5]: version finalized
+i  hosting[futmatch1-e21d5]: releasing new version...
++  hosting[futmatch1-e21d5]: release complete
+
++  Deploy complete!
+
+Project Console: https://console.firebase.google.com/project/futmatch1-e21d5/overview
+Hosting URL: https://futmatch1-e21d5.web.app

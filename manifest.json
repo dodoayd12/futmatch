@@ -1,0 +1,27 @@
+{
+  "name": "FutMatch - Rakibini Bul",
+  "short_name": "FutMatch",
+  "description": "Halı saha rakibini bul! Şehrindeki takımları keşfet, eşleş ve sahaya çık.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "lang": "tr",
+  "icons": [
+    {
+      "src": "logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "social"],
+  "screenshots": []
+}
