@@ -533,13 +533,9 @@
             return (
                 <div style={{ position: "absolute", width: "100%", height: "100%", borderRadius: 24, overflow: "hidden", background: th.card, border: `1px solid ${th.border}`, animation: anim, boxShadow: dark ? "0 20px 60px rgba(0,0,0,.8)" : "0 20px 60px rgba(0,0,0,.15)", ...dragStyle }}>
                     {/* LIKE overlay */}
-                    <div style={{ position: "absolute", inset: 0, zIndex: 10, borderRadius: 24, background: "rgba(74,222,128,0.18)", border: "3px solid #4ade80", display: "flex", alignItems: "center", justifyContent: "center", opacity: likeOpacity, pointerEvents: "none", transition: "opacity .05s" }}>
-                        <span style={{ fontSize: 64, filter: "drop-shadow(0 0 12px #4ade80)" }}>♥</span>
-                    </div>
+                    <div style={{ position: "absolute", inset: 0, zIndex: 10, borderRadius: 24, background: "rgba(74,222,128,0.22)", border: "3px solid #4ade80", opacity: likeOpacity, pointerEvents: "none", transition: "opacity .05s" }} />
                     {/* NOPE overlay */}
-                    <div style={{ position: "absolute", inset: 0, zIndex: 10, borderRadius: 24, background: "rgba(248,113,113,0.18)", border: "3px solid #f87171", display: "flex", alignItems: "center", justifyContent: "center", opacity: nopeOpacity, pointerEvents: "none", transition: "opacity .05s" }}>
-                        <span style={{ fontSize: 64, filter: "drop-shadow(0 0 12px #f87171)" }}>✕</span>
-                    </div>
+                    <div style={{ position: "absolute", inset: 0, zIndex: 10, borderRadius: 24, background: "rgba(248,113,113,0.22)", border: "3px solid #f87171", opacity: nopeOpacity, pointerEvents: "none", transition: "opacity .05s" }} />
                     <div style={{ height: "55%", background: dark ? `linear-gradient(160deg,#111,#0a0a00)` : `linear-gradient(160deg,#f8f7ee,#fff)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
                         <div style={{ position: "absolute", inset: 0, backgroundImage: `radial-gradient(circle at 50% 40%, ${th.acc}15 0%, transparent 65%)`, pointerEvents: "none" }} />
                         <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
@@ -644,9 +640,9 @@
                     {/* Action buttons */}
                     <div style={{ flexShrink: 0, padding: "0 20px 12px" }}>
                         <div style={{ display: "flex", justifyContent: "center", gap: 16, marginBottom: 10 }}>
-                            <button onClick={() => doSwipe("left")} style={{ width: 58, height: 58, borderRadius: 29, border: `2px solid #f87171`, background: "transparent", fontSize: 24, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171", transition: "all .15s" }}>✕</button>
+                            <button onClick={() => doSwipe("left")} style={{ width: 58, height: 58, borderRadius: 29, border: `2px solid #f87171`, background: "rgba(248,113,113,0.08)", cursor: "pointer", transition: "all .15s" }} />
                             <button onClick={() => doSwipe("super")} style={{ width: 52, height: 52, borderRadius: 26, border: `2px solid #F5F234`, background: "transparent", fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>⭐</button>
-                            <button onClick={() => doSwipe("right")} style={{ width: 58, height: 58, borderRadius: 29, border: `2px solid #4ade80`, background: "transparent", fontSize: 24, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#4ade80", transition: "all .15s" }}>♥</button>
+                            <button onClick={() => doSwipe("right")} style={{ width: 58, height: 58, borderRadius: 29, border: `2px solid #4ade80`, background: "rgba(74,222,128,0.08)", cursor: "pointer", transition: "all .15s" }} />
                         </div>
                         <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
                             <span style={{ color: th.text5, fontSize: 10 }}>← Sola: Geç</span>
@@ -699,12 +695,18 @@
                 return arr;
             }, []);
 
-            const times = ["10:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"];
+            const times = Array.from({ length: 18 }, (_, i) => `${String(i + 6).padStart(2, "0")}:00`);
 
             function send() { if (!text.trim()) return; sendMsg(chatId, text.trim()); setText(""); }
 
+            function isPastSlot(isoDate, time) {
+                const dt = new Date(`${isoDate}T${time}`);
+                return dt <= new Date();
+            }
+
             function sendInvite() {
                 if (!selDay) return;
+                if (isPastSlot(selDay.iso, selTime)) return;
                 const dt = new Date(`${selDay.iso}T${selTime}`);
                 const fmt = dt.toLocaleString("tr-TR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
                 sendMsg(chatId, `📅 Maç Daveti: ${fmt}`, "match_invite", { datetime: dt.toISOString(), accepted: false, rejected: false });
@@ -793,9 +795,16 @@
                             {/* Time chips */}
                             <div style={{ color: th.text4, fontSize: 10, fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>SAAT SEÇ</div>
                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
-                                {times.map(t => (
-                                    <button key={t} onClick={() => setSelTime(t)} style={{ padding: "7px 12px", borderRadius: 10, border: `1.5px solid ${selTime === t ? th.acc : th.border}`, background: selTime === t ? `${th.acc}18` : "transparent", color: selTime === t ? th.acc : th.text3, fontSize: 12, fontWeight: selTime === t ? 800 : 500, cursor: "pointer", fontFamily: "'Outfit',sans-serif", transition: "all .15s" }}>{t}</button>
-                                ))}
+                                {times.map(t => {
+                                    const past = selDay && isPastSlot(selDay.iso, t);
+                                    const active = selTime === t && !past;
+                                    return (
+                                        <button key={t} disabled={past} onClick={() => { if (!past) setSelTime(t); }}
+                                            style={{ padding: "7px 12px", borderRadius: 10, border: `1.5px solid ${active ? th.acc : th.border}`, background: active ? `${th.acc}18` : "transparent", color: past ? th.text5 : active ? th.acc : th.text3, fontSize: 12, fontWeight: active ? 800 : 500, cursor: past ? "not-allowed" : "pointer", opacity: past ? 0.35 : 1, fontFamily: "'Outfit',sans-serif", transition: "all .15s" }}>
+                                            {t}
+                                        </button>
+                                    );
+                                })}
                             </div>
                             <div style={{ display: "flex", gap: 8 }}>
                                 <button onClick={() => setShowInvite(false)} style={{ flex: 1, padding: "11px", borderRadius: 12, border: `1px solid ${th.border}`, background: "transparent", color: th.text3, fontSize: 13, cursor: "pointer", fontFamily: "'Outfit',sans-serif" }}>İptal</button>
@@ -1840,7 +1849,7 @@
                         {showAgreement && <AgreementModal th={{ card: "#0d0d0d", border: "#1c1c1c", border2: "#252525", border3: "#333", inp: "#0d0d0d", text: "#fff", text3: "#999", text4: "#555", text5: "#2e2e2e" }} onClose={() => setShowAgreement(false)} />}
                         {/* Logo / Brand */}
                         <div style={{ textAlign: "center", marginBottom: 48 }}>
-                            <div style={{ fontSize: 58, marginBottom: 12, animation: "heartbeat 2s ease infinite" }}>⚽</div>
+                            <img src="logo.jpg" alt="FutMatch" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", marginBottom: 12, animation: "heartbeat 2s ease infinite", border: "3px solid rgba(245,242,52,0.3)", boxShadow: "0 0 28px rgba(245,242,52,0.15)" }} />
                             <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: 56, lineHeight: 1, letterSpacing: 4, color: "#fff" }}>FUT</div>
                             <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 900, fontSize: 56, lineHeight: 1, letterSpacing: 4, color: "#F5F234", marginTop: -6 }}>MATCH</div>
                             <div style={{ width: 50, height: 2, background: "linear-gradient(90deg,transparent,#F5F234,transparent)", margin: "16px auto 12px" }} />
@@ -2260,8 +2269,10 @@
 
             function doSwipe(dir) {
                 if (!top || !uid) return;
-                const like = dir === "right" || dir === "super";
-                if (like && myInitiated >= 1 && !me?.isPremium) { setShowPrem(true); return; }
+                if (!me?.isPremium) {
+                    if (dir === "super") { setShowPrem(true); return; }
+                    if (swipeMap.size >= 5 || matches.length >= 1) { setShowPrem(true); return; }
+                }
                 setSwipeDir(dir === "super" ? "right" : dir);
                 const topId = String(top.id);
 
