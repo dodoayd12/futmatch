@@ -979,9 +979,16 @@
             );
         }
         // ── MATCHES TAB ───────────────────────────────────────────────────────
-        function MatchesTab({ matches, chats, onChat, th, dark }) {
+        function MatchesTab({ matches, chats, onChat, isPremium, th, dark }) {
             const resColor = { win: "#4ade80", loss: "#f87171", draw: th.text3 };
             const resLabel = { win: "🏆 Galibiyet", loss: "😞 Mağlubiyet", draw: "🤝 Beraberlik" };
+            const sortedByDate = [...matches].sort((a, b) => {
+                const tA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+                const tB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+                return tA - tB;
+            });
+            const firstMatchId = sortedByDate[0]?.id;
+            const isLocked = (matchId) => !isPremium && matches.length > 1 && matchId !== firstMatchId;
 
             function getLastMsg(chatId) {
                 const msgs = chats[chatId] || [];
@@ -1033,17 +1040,18 @@
                             const lastMsg = getLastMsg(m.chatId);
                             const isMe = lastMsg?.from === "me";
                             return (
-                                <div key={m.id} onClick={() => onChat(m.chatId)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 10px", borderRadius: 18, marginBottom: 4, cursor: "pointer", background: th.card, border: `1px solid ${th.border}`, transition: "opacity .15s", animation: "fadeUp .3s ease" }}>
+                                <div key={m.id} onClick={() => onChat(m.chatId)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 10px", borderRadius: 18, marginBottom: 4, cursor: "pointer", background: th.card, border: `1px solid ${isLocked(m.id) ? "rgba(245,242,52,.3)" : th.border}`, transition: "opacity .15s", animation: "fadeUp .3s ease", opacity: isLocked(m.id) ? 0.75 : 1 }}>
                                     {/* Avatar */}
                                     <div style={{ position: "relative", flexShrink: 0 }}>
                                         <div style={{ width: 52, height: 52, borderRadius: 16, background: th.bg4, border: `2px solid ${m.confirmed ? "#4ade8044" : "#f9731644"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>{m.team.logo}</div>
                                         {!m.result && <div style={{ position: "absolute", bottom: -2, right: -2, width: 12, height: 12, borderRadius: 6, background: m.confirmed ? "#4ade80" : "#f97316", border: `2px solid ${th.card}` }} />}
+                                        {isLocked(m.id) && <div style={{ position: "absolute", top: -4, right: -4, width: 18, height: 18, borderRadius: "50%", background: "#F5F234", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>🔒</div>}
                                     </div>
                                     {/* Info */}
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
                                             <div style={{ color: th.text, fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.team.name}</div>
-                                            {lastMsg && <div style={{ color: th.text4, fontSize: 10, flexShrink: 0, marginLeft: 8 }}>{fmtTime(lastMsg.ts)}</div>}
+                                            {isLocked(m.id) ? <div style={{ color: th.acc, fontSize: 10, fontWeight: 700, flexShrink: 0 }}>⚡ Premium</div> : lastMsg && <div style={{ color: th.text4, fontSize: 10, flexShrink: 0, marginLeft: 8 }}>{fmtTime(lastMsg.ts)}</div>}
                                         </div>
                                         {lastMsg ? (
                                             <div style={{ color: th.text4, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -2624,7 +2632,17 @@
                         )}
                         {tab === "matches" && (activeChat != null && matches.some(m => m.chatId === activeChat)
                             ? <ChatScreen chatId={activeChat} matches={matches} chats={chats} sendMsg={sendMsg} acceptInvite={acceptInvite} rejectInvite={rejectInvite} voteResult={voteResult} onBack={() => setActiveChat(null)} onBlock={onBlock} th={th} dark={dark} uid={uid} />
-                            : <MatchesTab matches={matches} chats={chats} onChat={id => { setActiveChat(id); }} th={th} dark={dark} />
+                            : <MatchesTab matches={matches} chats={chats} isPremium={!!me?.isPremium} onChat={id => {
+                                    if (!me?.isPremium && matches.length > 1) {
+                                        const sorted = [...matches].sort((a, b) => {
+                                            const tA = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+                                            const tB = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+                                            return tA - tB;
+                                        });
+                                        if (id !== sorted[0]?.id) { setShowPrem(true); return; }
+                                    }
+                                    setActiveChat(id);
+                                }} th={th} dark={dark} />
                         )}
                         {tab === "leaderboard" && <LeaderTab me={me} all={allBoard} th={th} dark={dark} />}
                         {tab === "profile" && <ProfileTab me={me} rnk={rnk} prog={prog} nextRnk={nextRnk} setShowPrem={setShowPrem} updateMe={updateMe} toggleDay={toggleDay} th={th} dark={dark} setDark={setDark} />}
