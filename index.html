@@ -762,6 +762,8 @@
                 if (!otherId) return;
                 onBlock && onBlock(otherId);
                 deleteMessages();
+                // Sohbeti listeden kaldır
+                db.collection("matches").doc(chatId).update({ chatDeleted: true }).catch(() => {});
                 setShowBlockConfirm(false);
                 setShowMenu(false);
                 onBack();
@@ -786,6 +788,7 @@
                 }).catch(err => console.error("Report hatası:", err));
                 onBlock && onBlock(otherId);
                 deleteMessages();
+                db.collection("matches").doc(chatId).update({ chatDeleted: true }).catch(() => {});
                 setReportDone(true);
                 setTimeout(() => { setShowReport(false); setReportReason(""); setReportDone(false); onBack(); }, 2000);
             }
