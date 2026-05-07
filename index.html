@@ -2247,91 +2247,65 @@
                         const opVote = otherId ? (d[`result_${otherId}`] || null) : null;
                         let result = d.result || null;
                         let resultConfirmed = d.resultConfirmed || false;
-                        const pointsAwarded = !!d.pointsAwarded;
+                        // Her kullanıcı yalnızca kendi bayrağını kontrol eder
+                        // (Firestore rules: takım belgesi yalnızca sahibi tarafından güncellenebilir)
+                        const myPtsAwarded = !!d[`ptsAwarded_${uid}`] || !!d.pointsAwarded;
                         const disputed = !!d.disputed;
                         const adminResolved = !!d.adminResolved;
                         const ptsFor = (v) => v === "win" ? 100 : v === "draw" ? 50 : 25;
                         const statsFor = (v) => v === "win" ? { wins: FV.increment(1) } : v === "draw" ? { draws: FV.increment(1) } : { losses: FV.increment(1) };
 
+                        function applyResult(matchId, myVote, extraMatchFields, afterFn) {
+                            const matchRef = db.collection("matches").doc(matchId);
+                            const myTeamRef = db.collection("teams").doc(uid);
+                            db.runTransaction(async (tx) => {
+                                const mSnap = await tx.get(matchRef);
+                                const cur = mSnap.data() || {};
+                                if (cur[`ptsAwarded_${uid}`] || cur.pointsAwarded) return null;
+                                const mv = myVote;
+                                const myPts = ptsFor(mv);
+                                // Sadece kendi takımını güncelle — Firestore rules gereği
+                                tx.update(myTeamRef, { points: FV.increment(myPts), played: FV.increment(1), ...statsFor(mv) });
+                                tx.update(matchRef, { result: mv, resultConfirmed: true, [`ptsAwarded_${uid}`]: true, ...extraMatchFields });
+                                return { myVote: mv, myPts };
+                            }).then(res => {
+                                if (!res) return;
+                                const { myVote: v, myPts: p } = res;
+                                setMe(m => ({ ...m, wins: (m.wins || 0) + (v === "win" ? 1 : 0), draws: (m.draws || 0) + (v === "draw" ? 1 : 0), losses: (m.losses || 0) + (v === "loss" ? 1 : 0), played: (m.played || 0) + 1, points: (m.points || 0) + p }));
+                                setFloatPts(p); setTimeout(() => setFloatPts(null), 1500);
+                                afterFn && afterFn(v, p);
+                                // Sohbet + swipe temizle
+                                db.collection("matches").doc(matchId).update({ chatDeleted: true }).catch(() => {});
+                                db.collection("matches").doc(matchId).collection("messages").get()
+                                    .then(msgs => { const b = db.batch(); msgs.forEach(m2 => b.delete(m2.ref)); b.commit().catch(() => {}); }).catch(() => {});
+                                if (otherId) {
+                                    db.collection("swipes").doc(uid).collection("records").doc(otherId).delete().catch(() => {});
+                                    db.collection("swipes").doc(otherId).collection("records").doc(uid).delete().catch(() => {});
+                                }
+                            }).catch(() => {});
+                        }
+
                         // Admin kararı var ve henüz puan verilmemişse uygula
                         const adminResult = d.adminResult || null;
-                        if (adminResult && !pointsAwarded) {
+                        if (adminResult && !myPtsAwarded) {
                             const myAdminVote = adminResult[uid];
                             if (myAdminVote) {
-                                const matchRef = db.collection("matches").doc(doc.id);
-                                db.runTransaction(async (tx) => {
-                                    const mSnap = await tx.get(matchRef);
-                                    const cur = mSnap.data() || {};
-                                    if (cur.pointsAwarded) return null;
-                                    const ar = cur.adminResult || {};
-                                    const mv = ar[uid]; if (!mv) return null;
-                                    const myPts = ptsFor(mv);
-                                    tx.update(matchRef, { result: mv, resultConfirmed: true, pointsAwarded: true, adminResolved: true });
-                                    tx.update(db.collection("teams").doc(uid), { points: FV.increment(myPts), played: FV.increment(1), ...statsFor(mv) });
-                                    if (otherId && ar[otherId]) {
-                                        const ov = ar[otherId];
-                                        tx.update(db.collection("teams").doc(otherId), { points: FV.increment(ptsFor(ov)), played: FV.increment(1), ...statsFor(ov) });
-                                    }
-                                    db.collection("disputes").doc(doc.id).set({ status: "resolved", adminDecision: ar, resolvedAt: FV.serverTimestamp() }, { merge: true }).catch(() => {});
-                                    return { myVote: mv, myPts };
-                                }).then(res => {
-                                    if (!res) return;
-                                    const { myVote: v, myPts: p } = res;
-                                    setMe(m => ({ ...m, wins: (m.wins || 0) + (v === "win" ? 1 : 0), draws: (m.draws || 0) + (v === "draw" ? 1 : 0), losses: (m.losses || 0) + (v === "loss" ? 1 : 0), played: (m.played || 0) + 1, points: (m.points || 0) + p }));
-                                    setFloatPts(p); setTimeout(() => setFloatPts(null), 1500);
+                                applyResult(doc.id, myAdminVote, { adminResolved: true }, (v, p) => {
                                     toast(`⚖️ Hakem kararı uygulandı! +${p} puan`, "success");
-                                    const matchId = doc.id;
-                                    db.collection("matches").doc(matchId).update({ chatDeleted: true }).catch(() => {});
-                                    db.collection("matches").doc(matchId).collection("messages").get()
-                                        .then(msgs => { const b = db.batch(); msgs.forEach(m2 => b.delete(m2.ref)); b.commit().catch(() => {}); }).catch(() => {});
-                                    if (otherId) {
-                                        db.collection("swipes").doc(uid).collection("records").doc(otherId).delete().catch(() => {});
-                                        db.collection("swipes").doc(otherId).collection("records").doc(uid).delete().catch(() => {});
-                                    }
-                                }).catch(() => {});
+                                    db.collection("disputes").doc(doc.id).set({ status: "resolved", resolvedAt: FV.serverTimestamp() }, { merge: true }).catch(() => {});
+                                });
                                 result = myAdminVote; resultConfirmed = true;
                             }
                         }
 
-                        if (myVote && opVote && !pointsAwarded && !adminResult) {
+                        if (myVote && opVote && !myPtsAwarded && !adminResult) {
                             const agree = (myVote === "win" && opVote === "loss") ||
                                 (myVote === "loss" && opVote === "win") ||
                                 (myVote === "draw" && opVote === "draw");
                             if (agree) {
-                                const matchRef = db.collection("matches").doc(doc.id);
-                                const myTeamRef = db.collection("teams").doc(uid);
-                                const opTeamRef = otherId ? db.collection("teams").doc(otherId) : null;
-
-                                db.runTransaction(async (tx) => {
-                                    const snap = await tx.get(matchRef);
-                                    const cur = snap.data() || {};
-                                    if (cur.pointsAwarded) return;
-                                    const curMyVote = cur[`result_${uid}`] || null;
-                                    const curOpVote = otherId ? (cur[`result_${otherId}`] || null) : null;
-                                    if (!curMyVote || !curOpVote) return;
-                                    const stillAgree = (curMyVote === "win" && curOpVote === "loss") || (curMyVote === "loss" && curOpVote === "win") || (curMyVote === "draw" && curOpVote === "draw");
-                                    if (!stillAgree) return;
-                                    const myPts = ptsFor(curMyVote); const opPts = ptsFor(curOpVote);
-                                    tx.update(matchRef, { result: curMyVote, resultConfirmed: true, pointsAwarded: true });
-                                    tx.update(myTeamRef, { points: FV.increment(myPts), played: FV.increment(1), ...statsFor(curMyVote) });
-                                    if (opTeamRef) tx.update(opTeamRef, { points: FV.increment(opPts), played: FV.increment(1), ...statsFor(curOpVote) });
-                                    return { myVote: curMyVote, myPts };
-                                }).then((res) => {
-                                    if (!res) return;
-                                    const { myVote: v, myPts: p } = res;
-                                    setMe(m => ({ ...m, wins: (m.wins || 0) + (v === "win" ? 1 : 0), draws: (m.draws || 0) + (v === "draw" ? 1 : 0), losses: (m.losses || 0) + (v === "loss" ? 1 : 0), played: (m.played || 0) + 1, points: (m.points || 0) + p }));
-                                    setFloatPts(p); setTimeout(() => setFloatPts(null), 1500);
+                                applyResult(doc.id, myVote, {}, (v, p) => {
                                     toast(`Sonuç onaylandı! +${p} puan`, "success");
-                                    // Sohbet temizleme ve swipe sıfırlama
-                                    const matchId = doc.id;
-                                    db.collection("matches").doc(matchId).update({ chatDeleted: true }).catch(() => {});
-                                    db.collection("matches").doc(matchId).collection("messages").get()
-                                        .then(msgs => { const b = db.batch(); msgs.forEach(m2 => b.delete(m2.ref)); b.commit().catch(() => {}); }).catch(() => {});
-                                    if (otherId) {
-                                        db.collection("swipes").doc(uid).collection("records").doc(otherId).delete().catch(() => {});
-                                        db.collection("swipes").doc(otherId).collection("records").doc(uid).delete().catch(() => {});
-                                    }
-                                }).catch(() => { });
+                                });
                                 result = myVote; resultConfirmed = true;
                             } else if (!d.disputeRecorded) {
                                 // Oylar çakışıyor → itiraz kaydet
